@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (oxlint, eslint, prettier)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # The package.json lint scripts pass --fix; CI runs the same tools check-only.
+      - name: oxlint
+        run: npx oxlint .
+      - name: eslint
+        run: npx eslint . --max-warnings=0
+      - name: prettier
+        run: npx prettier --check src/
+
+  build:
+    name: Type-check, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
+      - run: npm run build
